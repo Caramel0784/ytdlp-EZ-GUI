@@ -116,7 +116,10 @@ def build_cmd(url, d_type):
     if not url:
         return None, "Please enter a URL"
 
-    cmd = [YTDLP]
+    cmd += [
+        "--impersonate", "chrome",                           # ปลอมแปลงตัวตนเป็น Chrome Browser
+        "--extractor-args", "youtube:player-client=android", # บังคับใช้ Client ของ Android ในการดึงไฟล์ (ระบบตรวจจับจะเบากว่า)
+    ]
     
     # กำหนดให้โหลดมาเก็บไว้ในโฟลเดอร์ downloads ของเซิร์ฟเวอร์ชั่วคราว เพื่อเตรียมให้กดโหลดผ่านเว็บ
     output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
