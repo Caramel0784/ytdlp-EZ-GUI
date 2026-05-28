@@ -1,4 +1,3 @@
 streamlit
 yt-dlp
 yt-dlp-ffmpeg-foobar
--U yt-dlp
