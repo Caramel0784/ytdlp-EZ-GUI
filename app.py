@@ -112,41 +112,57 @@ meta_var = st.checkbox("🏷 Add metadata", value=True)
 st.markdown("---")
 
 # ── build command ─────────────────────────────────────────────────────
-def build_cmd(url, d_type):
-    if not url:
-        return None, "Please enter a URL"
+# ── ค้นหาฟังก์ชันนี้ใน app.py เดิมของคุณ แล้ววางทับเฉพาะฟังก์ชันนี้ ────────────────
+    def build_cmd(self, url=None): # หรือ build_cmd(url, d_type) ตามเวอร์ชันที่คุณใช้อยู่
+        u = url or self.url_var.get().strip()
+        if not u:
+            return None, "Please enter a URL"
 
-    cmd += [
-        "--impersonate", "chrome",                           # ปลอมแปลงตัวตนเป็น Chrome Browser
-        "--extractor-args", "youtube:player-client=android", # บังคับใช้ Client ของ Android ในการดึงไฟล์ (ระบบตรวจจับจะเบากว่า)
-    ]
-    
-    # กำหนดให้โหลดมาเก็บไว้ในโฟลเดอร์ downloads ของเซิร์ฟเวอร์ชั่วคราว เพื่อเตรียมให้กดโหลดผ่านเว็บ
-    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+        t = self.type_var.get() if hasattr(self, 'type_var') else download_type
+        cmd = [YTDLP]
+
+        # 🌟 [BYPASS] เพิ่ม Parameter เพื่อหลบเลี่ยงระบบตรวจจับบอทของ YouTube
+        cmd += [
+            "--impersonate", "chrome",                           # ปลอมตัวเป็น Browser Chrome ของมนุษย์
+            "--extractor-args", "youtube:player-client=ios,android", # บังคับใช้ระบบของ iOS/Android ในการดึงข้อมูลเพื่อเลี่ยง Error 429
+            "--no-check-certificates",                           # ข้ามการตรวจสอบใบรับรองในกรณีเน็ตเวิร์กของเซิร์ฟเวอร์มีปัญหา
+        ]
+
+        if "Video" in t or t == "video":
+            q_val = self.quality_var.get() if hasattr(self, 'quality_var') else quality_val
+            cmd += ["-f", q_val]
+            c = self.container_var.get() if hasattr(self, 'container_var') else merge_format
+            if c and c != "Auto":
+                cmd += ["--merge-output-format", c]
+        elif "Audio" in t or t == "audio":
+            fmt = self.audio_fmt_var.get() if hasattr(self, 'audio_fmt_var') else audio_fmt
+            q = self.audio_q_var.get().split()[0] if hasattr(self, 'audio_q_var') else audio_q
+            cmd += ["-x", "--audio-format", fmt, "--audio-quality", q]
+        elif "Playlist" in t or t == "playlist":
+            s = self.pl_start.get().strip() if hasattr(self, 'pl_start') else pl_start.strip()
+            e = self.pl_end.get().strip() if hasattr(self, 'pl_end') else pl_end.strip()
+            if s: cmd += ["--playlist-start", s]
+            if e: cmd += ["--playlist-end",   e]
+            cmd += ["-f", "bestvideo+bestaudio/best"]
+
+        # ดึงค่า Toggles จากหน้าแอปมาประกอบคำสั่งตามเดิม
+        v_subs = self.subs_var.get() if hasattr(self, 'subs_var') else subs_var
+        v_thumb = self.thumb_var.get() if hasattr(self, 'thumb_var') else thumb_var
+        v_meta = self.meta_var.get() if hasattr(self, 'meta_var') else meta_var
+
+        if v_subs:  cmd += ["--write-auto-sub", "--embed-subs", "--sub-lang", "en"]
+        if v_thumb: cmd += ["--embed-thumbnail"]
+        if v_meta:  cmd += ["--add-metadata"]
+
+        # ตั้งโฟลเดอร์สำหรับดาวน์โหลดชั่วคราวบน Render
+        output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
         
-    out_template = os.path.join(output_dir, "%(title)s.%(ext)s")
-
-    if "Video" in d_type:
-        cmd += ["-f", quality_val]
-        if merge_format and merge_format != "Auto":
-            cmd += ["--merge-output-format", merge_format]
-    elif "Audio" in d_type:
-        cmd += ["-x", "--audio-format", audio_fmt, "--audio-quality", audio_q]
-    elif "Playlist" in d_type:
-        if pl_start.strip(): cmd += ["--playlist-start", pl_start.strip()]
-        if pl_end.strip(): cmd += ["--playlist-end", pl_end.strip()]
-        cmd += ["-f", "bestvideo+bestaudio/best"]
-
-    if subs_var:  cmd += ["--write-auto-sub", "--embed-subs", "--sub-lang", "en"]
-    if thumb_var: cmd += ["--embed-thumbnail"]
-    if meta_var:  cmd += ["--add-metadata"]
-
-    cmd += ["-o", out_template]
-    cmd.append(url)
-    return cmd, output_dir
-
+        cmd += ["-o", os.path.join(output_dir, "%(title)s.%(ext)s")]
+        cmd.append(u)
+        
+        return cmd, output_dir
 # Action Buttons
 st.markdown("### Actions")
 col_list, col_dl = st.columns([1, 2])
