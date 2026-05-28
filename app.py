@@ -98,9 +98,9 @@ st.markdown("---")
 def build_cmd(url, d_type):
     cmd = [YTDLP]
     
-    # [BYPASS] พารามิเตอร์หลบระบบตรวจจับบอทของ YouTube
+    # 🌟 [BYPASS NEW] สลับมาใช้วิธีเปลี่ยน User-Agent และจำลอง Client แบบไม่พึ่งไลบรารีภายนอก
     cmd += [
-        "--impersonate", "chrome",
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "--extractor-args", "youtube:player-client=ios,android",
         "--no-check-certificates",
     ]
@@ -129,7 +129,6 @@ def build_cmd(url, d_type):
     cmd += ["-o", out_template]
     cmd.append(url)
     return cmd, output_dir
-
 # Actions
 st.markdown("### Actions")
 col_list, col_dl = st.columns([1, 2])
