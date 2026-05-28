@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-yt-dlp Web GUI — Hosted on Render / Local Web
-Requires: pip install streamlit yt-dlp
+yt-dlp Web GUI — Hosted on Render
+Requires: pip install streamlit yt-dlp static-ffmpeg
 """
 
 import streamlit as st
@@ -10,6 +10,13 @@ import os
 import shutil
 import sys
 
+# 🌟เรียกใช้ static-ffmpeg เพื่อให้ระบบจับคู่ Path ของ FFmpeg บน Render อัตโนมัติ
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except Exception:
+    pass
+
 # ── Setup Page Config ────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="yt-dlp Web GUI",
@@ -17,38 +24,15 @@ st.set_page_config(
     layout="centered"
 )
 
-# ── find yt-dlp binary ──────────────────────────────────────────────────────
-def find_ytdlp():
-    # 1. same folder as this script
-    local = os.path.join(os.path.dirname(os.path.abspath(__file__)), "yt-dlp")
-    if os.path.isfile(local):
-        return local
-    local_exe = local + ".exe"
-    if os.path.isfile(local_exe):
-        return local_exe
-    # 2. system PATH
-    found = shutil.which("yt-dlp")
-    if found:
-        return found
-    # 3. pip-installed module fallback
-    return "yt-dlp"  # On Linux/Render, if installed via pip, it runs as 'yt-dlp'
-
-YTDLP = find_ytdlp()
+YTDLP = "yt-dlp"
 
 # ── UI Layout ───────────────────────────────────────────────────────────────
 st.title("⬇ yt-dlp Web GUI")
-
-# Check binary status
-if YTDLP and (shutil.which(YTDLP) or os.path.exists(YTDLP)):
-    st.success(f"✓ yt-dlp พร้อมใช้งาน")
-else:
-    st.error("✗ ไม่พบ yt-dlp — โปรดตรวจสอบระบบการติดตั้ง")
-
+st.success("✓ ระบบเชื่อมต่อพร้อมทำงาน")
 st.markdown("---")
 
 # URL Input
 url_input = st.text_input("Video / Playlist URL", placeholder="วางลิงก์วิดีโอหรือเพลย์ลิสต์ที่นี่...")
-
 st.markdown("---")
 
 # Download Type Selection
@@ -60,7 +44,7 @@ download_type = st.radio(
     label_visibility="collapsed"
 )
 
-# Option Frames based on Selection
+# Initialize variables
 quality_val = "bestvideo+bestaudio/best"
 merge_format = "Auto"
 audio_fmt = "mp3"
@@ -108,22 +92,24 @@ st.markdown("### Options")
 subs_var = st.checkbox("📝 Embed subtitles (auto-generated)", value=False)
 thumb_var = st.checkbox("🖼 Embed thumbnail", value=False)
 meta_var = st.checkbox("🏷 Add metadata", value=True)
-
 st.markdown("---")
 
 # ── build command ─────────────────────────────────────────────────────
 def build_cmd(url, d_type):
-    if not url:
-        return None, "Please enter a URL"
-
     cmd = [YTDLP]
-
-    # 🌟 [BYPASS] พารามิเตอร์หลบระบบตรวจจับบอทของ YouTube บน Render
+    
+    # [BYPASS] พารามิเตอร์หลบระบบตรวจจับบอทของ YouTube
     cmd += [
         "--impersonate", "chrome",
         "--extractor-args", "youtube:player-client=ios,android",
         "--no-check-certificates",
     ]
+
+    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    out_template = os.path.join(output_dir, "%(title)s.%(ext)s")
 
     if "Video" in d_type:
         cmd += ["-f", quality_val]
@@ -140,18 +126,13 @@ def build_cmd(url, d_type):
     if thumb_var: cmd += ["--embed-thumbnail"]
     if meta_var:  cmd += ["--add-metadata"]
 
-    # ตั้งโฟลเดอร์สำหรับดาวน์โหลดชั่วคราวบน Render
-    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "downloads")
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    cmd += ["-o", os.path.join(output_dir, "%(title)s.%(ext)s")]
+    cmd += ["-o", out_template]
+    cmd.append(url)
     return cmd, output_dir
-# Action Buttons
+
+# Actions
 st.markdown("### Actions")
 col_list, col_dl = st.columns([1, 2])
-
-# Log Output Area
 log_area = st.empty()
 
 if col_list.button("🔍 List formats", use_container_width=True):
@@ -168,22 +149,12 @@ if col_dl.button("⬇ DOWNLOAD", type="primary", use_container_width=True):
         st.warning("⚠ Please enter a URL first.")
     else:
         cmd, out_dir = build_cmd(url_input.strip(), download_type)
-        
-        # ล้างไฟล์เก่าในโฟลเดอร์ downloads ก่อนเพื่อไม่ให้ตีกัน
         if os.path.exists(out_dir):
             shutil.rmtree(out_dir)
         os.makedirs(out_dir)
 
         st.info("▶ เริ่มกระบวนการดาวน์โหลดบนเซิร์ฟเวอร์...")
-        
-        # รันคำสั่งบรรทัดคำสั่งและแสดง Log สดๆ บนหน้าเว็บ
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1
-        )
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
         
         log_content = ""
         while True:
@@ -191,26 +162,24 @@ if col_dl.button("⬇ DOWNLOAD", type="primary", use_container_width=True):
             if not line:
                 break
             log_content += line
-            log_area.code(log_content) # อัปเดต log บนหน้าเว็บสดๆ
+            log_area.code(log_content)
             
         proc.wait()
         
         if proc.returncode == 0:
-            st.success("✅ เซิร์ฟเวอร์ดาวน์โหลดเสร็จเรียบร้อยเสร็จแล้ว!")
-            
-            # ค้นหาไฟล์ที่โหลดเสร็จในโฟลเดอร์ downloads เพื่อส่งให้ผู้ใช้กดดาวน์โหลดลงคอมตัวเอง
+            st.success("✅ ดาวน์โหลดบนเซิร์ฟเวอร์เสร็จสิ้น!")
             downloaded_files = os.listdir(out_dir)
             if downloaded_files:
                 for file_name in downloaded_files:
                     file_path = os.path.join(out_dir, file_name)
                     with open(file_path, "rb") as f:
                         st.download_button(
-                            label=f"💾 คลิกเพื่อบันทึกไฟล์: {file_name}",
+                            label=f"💾 คลิกเพื่อดาวน์โหลดลงเครื่องคุณ: {file_name}",
                             data=f,
                             file_name=file_name,
                             use_container_width=True
                         )
             else:
-                st.error("ไม่พบไฟล์ที่ดาวน์โหลดสำเร็จในระบบ")
+                st.error("ไม่พบไฟล์ที่ดาวน์โหลดสำเร็จ")
         else:
-            st.error(f"✗ เกิดข้อผิดพลาดในการดาวน์โหลด (Exit code: {proc.returncode})")
+            st.error(f"✗ เกิดข้อผิดพลาด (Exit code: {proc.returncode})")
