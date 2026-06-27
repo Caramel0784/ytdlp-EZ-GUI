@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yt-dlp GUI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;700&display=swap');
+
+  :root {
+    --bg: #0f0f11;
+    --surface: #18181c;
+    --surface2: #222228;
+    --border: #2e2e38;
+    --accent: #7c6af7;
+    --accent2: #a78bfa;
+    --text: #e8e8f0;
+    --muted: #7a7a92;
+    --success: #34d399;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --radius: 10px;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container { max-width: 720px; margin: 0 auto; }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 2rem;
+  }
+
+  .logo {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), #ec4899);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+
+  header h1 { font-size: 22px; font-weight: 700; }
+  header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .fix-box {
+    background: #1a1a10;
+    border: 1px solid #3d3a00;
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 1.5rem;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #d4c87a;
+  }
+  .fix-box strong { color: var(--warn); }
+  .fix-box code {
+    font-family: var(--mono);
+    background: #2a2800;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #ffe066;
+  }
+
+  label.field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  input[type=text], select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type=text]:focus, select:focus { border-color: var(--accent); }
+  input[type=text]::placeholder { color: var(--muted); }
+  select option { background: #222; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 1rem;
+  }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  .type-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 8px;
+    cursor: pointer;
+    text-align: center;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--muted);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .type-btn:hover { border-color: var(--accent); color: var(--text); }
+  .type-btn.active {
+    background: #1e1a3a;
+    border-color: var(--accent);
+    color: var(--accent2);
+    font-weight: 600;
+  }
+  .type-btn .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+
+  .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .slider:before {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--muted);
+    top: 3px; left: 3px;
+    transition: 0.2s;
+  }
+  .switch input:checked + .slider { background: #1e1a3a; border-color: var(--accent); }
+  .switch input:checked + .slider:before { transform: translateX(18px); background: var(--accent2); }
+
+  .cmd-section { margin-top: 1.5rem; }
+
+  .cmd-box {
+    background: #0a0a0e;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    color: #a3e635;
+    word-break: break-all;
+    position: relative;
+    min-height: 60px;
+  }
+
+  .cmd-box .prompt { color: var(--accent2); user-select: none; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+
+  .btn {
+    flex: 1;
+    padding: 11px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-copy {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-copy:hover { border-color: var(--accent); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #ec4899);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+
+  .note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.6;
+  }
+  .note code {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--surface2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+
+  .hidden { display: none !important; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--success);
+    color: #052e16;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: transform 0.25s ease;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: #1e1a3a;
+    color: var(--accent2);
+    border: 1px solid var(--accent);
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo">⬇</div>
+    <div>
+      <h1>yt-dlp GUI</h1>
+      <p>Visual command builder — paste the command into your terminal</p>
+    </div>
+  </header>
+
+  <div class="fix-box">
+    <strong>💡 Fix the <code>./yt-dlp</code> problem once and for all:</strong><br>
+    Open a terminal in this folder and run:<br>
+    <code>sudo cp yt-dlp /usr/local/bin/yt-dlp</code> &nbsp;(Linux/Mac)<br>
+    After that you can just type <code>yt-dlp</code> anywhere — no more <code>./</code> needed!<br>
+    <br>
+    <strong>On Windows?</strong> Add the folder to your PATH, or just use the command with <code>.\yt-dlp</code> in the box below.
+  </div>
+
+  <!-- URL -->
+  <div class="card">
+    <div class="card-title">Video / Playlist URL</div>
+    <input type="text" id="url" placeholder="https://youtube.com/watch?v=... or playlist URL" oninput="build()" />
+  </div>
+
+  <!-- Type -->
+  <div class="card">
+    <div class="card-title">What to download</div>
+    <div class="grid3">
+      <div class="type-btn active" data-val="video" onclick="setType(this)">
+        <span class="icon">🎬</span>Video
+      </div>
+      <div class="type-btn" data-val="audio" onclick="setType(this)">
+        <span class="icon">🎵</span>Audio only
+      </div>
+      <div class="type-btn" data-val="playlist" onclick="setType(this)">
+        <span class="icon">📋</span>Playlist
+      </div>
+    </div>
+  </div>
+
+  <!-- Video options -->
+  <div class="card" id="video-opts">
+    <div class="card-title">Video settings</div>
+    <div class="grid2">
+      <div>
+        <label class="field-label">Quality</label>
+        <select id="quality" onchange="build()">
+          <option value="bestvideo+bestaudio/best">Best available</option>
+          <option value="bestvideo[height<=1080]+bestaudio/best[height<=1080]">Max 1080p</option>
+          <option value="bestvideo[height<=720]+bestaudio/best[height<=720]">Max 720p</option>
+          <option value="bestvideo[height<=480]+bestaudio/best[height<=480]">Max 480p</option>
+          <option value="bestvideo[height<=360]+bestaudio/best[height<=360]">Max 360p</option>
+          <option value="worstvideo+worstaudio/worst">Smallest file</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Save as</label>
+        <select id="container" onchange="build()">
+          <option value="">Auto (recommended)</option>
+          <option value="mp4">MP4</option>
+          <option value="mkv">MKV</option>
+          <option value="webm">WebM</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio options -->
+  <div class="card hidden" id="audio-opts">
+    <div class="card-title">Audio settings</div>
+    <div class="grid2">
+      <div>
+        <label class="field-label">Format</label>
+        <select id="audio-fmt" onchange="build()">
+          <option value="mp3">MP3</option>
+          <option value="m4a">M4A</option>
+          <option value="opus">Opus (best quality/size)</option>
+          <option value="flac">FLAC (lossless)</option>
+          <option value="wav">WAV</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Quality</label>
+        <select id="audio-q" onchange="build()">
+          <option value="0">Best (0)</option>
+          <option value="3">Good (3)</option>
+          <option value="5">Medium (5)</option>
+          <option value="9">Smallest (9)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Playlist options -->
+  <div class="card hidden" id="playlist-opts">
+    <div class="card-title">Playlist range <span class="badge">optional</span></div>
+    <div class="grid2">
+      <div>
+        <label class="field-label">From item #</label>
+        <input type="text" id="pl-start" placeholder="1" oninput="build()" />
+      </div>
+      <div>
+        <label class="field-label">To item # (blank = all)</label>
+        <input type="text" id="pl-end" placeholder="leave blank for all" oninput="build()" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Extra options -->
+  <div class="card">
+    <div class="card-title">Extra options</div>
+    <div class="toggle-row">
+      <span>📝 Write subtitles (auto-generated)</span>
+      <label class="switch"><input type="checkbox" id="subs" onchange="build()"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span>🖼 Embed thumbnail into file</span>
+      <label class="switch"><input type="checkbox" id="thumb" onchange="build()"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span>🏷 Add metadata (title, artist…)</span>
+      <label class="switch"><input type="checkbox" id="meta" checked onchange="build()"><span class="slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <span>📁 Custom output folder</span>
+      <label class="switch"><input type="checkbox" id="dir-toggle" onchange="toggleDir()"><span class="slider"></span></label>
+    </div>
+    <div id="dir-row" class="hidden" style="margin-top:10px">
+      <label class="field-label">Folder path</label>
+      <input type="text" id="dir" placeholder="/home/user/Videos  or  C:\Users\you\Videos" oninput="build()" />
+    </div>
+    <div class="toggle-row">
+      <span>🔒 Use <code style="font-size:12px;background:#1a1a1a;padding:1px 5px;border-radius:4px;color:#a78bfa">./yt-dlp</code> prefix (if not in PATH)</span>
+      <label class="switch"><input type="checkbox" id="dot-slash" onchange="build()"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- Generated command -->
+  <div class="cmd-section">
+    <label class="field-label" style="margin-bottom:8px">Generated command — copy &amp; paste into terminal</label>
+    <div class="cmd-box">
+      <span class="prompt">$ </span><span id="cmd-text">yt-dlp "URL"</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-copy" onclick="copyCmd()">📋 Copy command</button>
+      <button class="btn btn-primary" onclick="selectFormats()">🔍 List available formats first</button>
+    </div>
+    <p class="note">
+      Open a terminal in the same folder as yt-dlp, then paste the command above.<br>
+      First time? Run <code>./yt-dlp -U</code> to update yt-dlp to the latest version.
+    </p>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Copied to clipboard!</div>
+
+<script>
+  function setType(el) {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    const v = el.dataset.val;
+    document.getElementById('video-opts').classList.toggle('hidden', v !== 'video');
+    document.getElementById('audio-opts').classList.toggle('hidden', v !== 'audio');
+    document.getElementById('playlist-opts').classList.toggle('hidden', v !== 'playlist');
+    build();
+  }
+
+  function toggleDir() {
+    document.getElementById('dir-row').classList.toggle('hidden', !document.getElementById('dir-toggle').checked);
+    build();
+  }
+
+  function build() {
+    const url = document.getElementById('url').value.trim() || 'URL';
+    const type = document.querySelector('.type-btn.active')?.dataset.val || 'video';
+    const dotSlash = document.getElementById('dot-slash').checked;
+    const bin = dotSlash ? './yt-dlp' : 'yt-dlp';
+
+    let parts = [bin];
+
+    if (type === 'video') {
+      const q = document.getElementById('quality').value;
+      parts.push('-f', `"${q}"`);
+      const c = document.getElementById('container').value;
+      if (c) parts.push('--merge-output-format', c);
+    } else if (type === 'audio') {
+      const fmt = document.getElementById('audio-fmt').value;
+      const q = document.getElementById('audio-q').value;
+      parts.push('-x', '--audio-format', fmt, '--audio-quality', q);
+    } else if (type === 'playlist') {
+      const s = document.getElementById('pl-start').value.trim();
+      const e = document.getElementById('pl-end').value.trim();
+      if (s) parts.push('--playlist-start', s);
+      if (e) parts.push('--playlist-end', e);
+      parts.push('-f', '"bestvideo+bestaudio/best"');
+    }
+
+    if (document.getElementById('subs').checked) parts.push('--write-auto-sub', '--embed-subs', '--sub-lang', 'en');
+    if (document.getElementById('thumb').checked) parts.push('--embed-thumbnail');
+    if (document.getElementById('meta').checked) parts.push('--add-metadata');
+
+    if (document.getElementById('dir-toggle').checked) {
+      const dir = document.getElementById('dir').value.trim();
+      if (dir) parts.push('-o', `"${dir}/%(title)s.%(ext)s"`);
+    }
+
+    parts.push(`"${url}"`);
+    document.getElementById('cmd-text').textContent = parts.join(' ');
+  }
+
+  function selectFormats() {
+    const url = document.getElementById('url').value.trim() || 'URL';
+    const dotSlash = document.getElementById('dot-slash').checked;
+    const bin = dotSlash ? './yt-dlp' : 'yt-dlp';
+    const cmd = `${bin} -F "${url}"`;
+    navigator.clipboard.writeText(cmd).catch(() => {});
+    document.getElementById('cmd-text').textContent = cmd;
+    showToast('📋 Format-list command copied!');
+  }
+
+  function copyCmd() {
+    const txt = document.getElementById('cmd-text').textContent;
+    navigator.clipboard.writeText(txt).then(() => showToast('✓ Copied to clipboard!'));
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  build();
+</script>
+</body>
+</html>
